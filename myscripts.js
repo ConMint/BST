@@ -15,6 +15,15 @@ class Tree {
     const sorted = [...new Set(array)].sort((a, b) => a - b);
     return sorted;
   }
+
+  minValue(root) {
+    let minv = root.value;
+    while (root.left != null) {
+      minv = root.left.value;
+      root = root.left;
+    }
+    return minv;
+  }
   buildTree(array) {
     let sorted = this.sortRemoveDupes(array);
     if (sorted.length === 0) return null;
@@ -26,9 +35,147 @@ class Tree {
     );
     return root;
   }
+
+  insert(value, root = this.root) {
+    if (root === null) return new Node(value);
+    root.value < value
+      ? (root.right = this.insert(value, root.right))
+      : (root.left = this.insert(value, root.left));
+    return root;
+  }
+
+  delete(value, root = this.root) {
+    if (root === null) return root;
+    if (root.value < value) root.right = this.delete(value, root.right);
+    else if (root.value > value) root.left = this.delete(value, root.left);
+    else {
+      if (root.left === null) return root.right;
+      else if (root.right === null) return root.left;
+      root.value = this.minValue(root.right);
+      root.right = this.delete(value, root.right);
+    }
+    return root;
+  }
+
+  find(value, root = this.root) {
+    const node = root;
+    if (node === null) return null;
+    if (node.value !== value) {
+      return node.value < value
+        ? this.find(value, node.right)
+        : this.find(value, node.left);
+    }
+    return node;
+  }
+  levelOrder(callback) {
+    if (!this.root) return [];
+    const queue = [this.root];
+    const results = [];
+    while (queue.length) {
+      let level = [];
+      let size = queue.length;
+      for (let i = 0; i < size; i++) {
+        const node = queue.shift();
+        level.push(node.value);
+        if (node.left) queue.push(node.left);
+        if (node.right) queue.push(node.right);
+        if (callback) callback(node);
+      }
+      results.push(level);
+    }
+    if (!callback) return results;
+  }
+
+  /**
+   * 3 methods for depth-first traversal
+   * Stack: Last In, First Out
+   * Preorder and Postorder uses stack.
+   * Inorder uses iteration.
+   */
+
+  // root left right
+  preorder(callback) {
+    if (!this.root) return [];
+    const stack = [this.root];
+    const results = [];
+    while (stack.length) {
+      const node = stack.pop();
+      if (node.right) stack.push(node.right);
+      if (node.left) stack.push(node.left);
+      if (callback) callback(node);
+      results.push(node.value);
+    }
+    if (!callback) return results;
+  }
+
+  // left root right
+  inorder(node = this.root, callback, result = []) {
+    if (!this.root) return [];
+    if (node === null) return;
+    this.inorder(node.left, callback, result);
+    callback ? callback(node) : result.push(node.value);
+    this.inorder(node.right, callback, result);
+    if (result) return result;
+  }
+
+  // left right root
+  postorder(callback) {
+    if (!this.root) return [];
+    const stack = [this.root];
+    const results = [];
+    while (stack.length) {
+      const node = stack.pop();
+      if (node.left) stack.push(node.left);
+      if (node.right) stack.push(node.right);
+      if (callback) callback(node);
+      results.push(node.value);
+    }
+    if (!callback) return results.reverse();
+  }
+  /**
+   * Height is defined as the number of edges in longest path from a given node to a leaf node.
+   * Height of a leaf node is 0
+   */
+  height(node = this.root) {
+    if (node === null) return -1;
+    const leftHeight = this.height(node.left);
+    const rightHeight = this.height(node.right);
+    return Math.max(leftHeight, rightHeight) + 1;
+  }
+
+  /**
+   * Depth of a node is the number of edges from the node to the tree's root node.
+   * Depth of root node is 0
+   */
+  depth(node, root = this.root, level = 0) {
+    if (!node) return null;
+    if (root === null) return 0;
+    if (root.value === node.value) return level;
+    let count = this.depth(node, root.left, level + 1);
+    if (count !== 0) return count;
+    return this.depth(node, root.right, level + 1);
+  }
+
+  isBalanced(node = this.root) {
+    if (node === null) return true;
+    const heightDiff = Math.abs(
+      this.height(node.left) - this.height(node.right)
+    );
+    return (
+      heightDiff <= 1 &&
+      this.isBalanced(node.left) &&
+      this.isBalanced(node.right)
+    );
+  }
+
+  rebalance() {
+    if (this.root === null) return;
+    const sorted = [...new Set(this.inorder().sort((a, b) => a - b))];
+    this.root = this.buildTree(sorted);
+  }
 }
 
-treetest = new Tree([1, 2, 3]);
+treetest = new Tree([1, 2, 3, 5, 6, 88, 76, 15]);
 
 const prettyPrint = (node, prefix = '', isLeft = true) => {
   if (node.right !== null) {
@@ -41,3 +188,21 @@ const prettyPrint = (node, prefix = '', isLeft = true) => {
 };
 
 prettyPrint(treetest.root);
+
+let tree = new Tree([1, 3, 2, 4]);
+tree.insert(8);
+tree.insert(10);
+tree.insert(11);
+tree.insert(9);
+tree.delete(9);
+console.log(tree.find(9)); // null. deleted
+console.log(tree.height()); // root height = 4
+console.log(tree.height(tree.find(10))); // height = 1
+console.log(tree.depth(tree.find(11))); // depth = 4
+console.log(tree.levelOrder()); // [ [ 3 ], [ 2, 4 ], [ 1, 8 ], [ 10 ], [11] ]
+console.log(tree.preorder()); // [ 3, 2, 1, 4, 8, 10, 11 ]
+console.log(tree.inorder()); // [ 1, 2, 3, 4, 8, 10, 11 ]
+console.log(tree.postorder()); // [ 1, 2, 11, 10, 8, 4, 3 ]
+console.log(tree.isBalanced()); // false
+tree.rebalance();
+console.log(tree.isBalanced()); //true;
